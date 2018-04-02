@@ -5,8 +5,7 @@ using std::string; using std::set;
 
 struct Course
 {
-	unsigned int semesterTaken : 3;
-	unsigned int difficulty : 18;
+	unsigned int difficulty : 21;
 	unsigned int hours : 3;
 	unsigned int semester1 : 1;
 	unsigned int semester2 : 1;
