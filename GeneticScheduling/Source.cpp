@@ -29,16 +29,23 @@ void print(Schedule s)
 		its[i] = semesters[i].begin();
 	}
 
-	cout << "   1    \t   2    \t   3    \t   4    \t   5    \t   6    \t   7    \t   8    \t" << endl;
-	cout << "--------\t--------\t--------\t--------\t--------\t--------\t--------\t--------\t" << endl;
+	int difficultyTotals[8] = { 0 };
+
+	cout << "    1    \t    2    \t    3    \t    4    \t    5    \t    6    \t    7    \t    8    \t" << endl;
+	cout << "---------\t---------\t---------\t---------\t---------\t---------\t---------\t---------\t" << endl;
 	for (int i = 0; i < count; i++) {
 		for (int s = 0; s < 8; s++) {
-			if (semesters[s].size() > i) cout << ((its[s])++)->name;
+			if (semesters[s].size() > i) {
+				difficultyTotals[s] += its[s]->difficulty;
+				cout << ((its[s])++)->name;
+			}
 			else cout << "        ";
 			cout << "   \t";
 		}
 		cout << endl;
 	}
+	for (int s = 0; s < 8; s++) cout << "Diff: " << difficultyTotals[s] << "   \t";
+	cout << endl;
 }
 
 double evaluate(Organism& o, bool verbose = false) {
@@ -92,7 +99,8 @@ double evaluate(Organism& o, bool verbose = false) {
 		for (int i = 0; i < COURSE_COUNT; i++)weightCounts[o.first[i] - 1] += courseData[i].difficulty;
 
 		//Adjust for the differences in semesters
-		for (int i = 0; i < 8; i++)weightCounts[i] *= 1 + i*.1;
+		//for (int i = 0; i < 8; i++)weightCounts[i] *= 1 + i * .1;
+		for (int i = 0; i < 8; i++)weightCounts[i] *= 2 - i*.1;
 
 		//Take the mean
 		double mean = 0; for (int i = 0; i < 8; i++)mean += weightCounts[i]; mean /= 8.0;
@@ -157,7 +165,7 @@ int main() {
 
 		evaluate(parents[0], true);
 		genCount++;
-	} while (parents[0].second < 5 || genCount > 100);
+	} while (parents[0].second < 5 && genCount < 100);
 
 	std::cout << "Valid Schedule in only " << genCount << " generations!" << std::endl << endl;
 	print(parents[0].first);
