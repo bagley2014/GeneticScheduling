@@ -27,6 +27,8 @@ struct Course
 	}
 };
 
+void getCourseData(Course*&);
+
 Course bnew113();
 Course bnew313();
 Course bold203();

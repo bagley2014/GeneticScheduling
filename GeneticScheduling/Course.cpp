@@ -1,5 +1,59 @@
 #include "Course.h"
 
+void getCourseData(Course* & cp)
+{
+	delete cp;
+	cp = new Course[42];
+
+	cp[0] = bnew113();
+	cp[1] = bnew313();
+	cp[2] = bold203();
+	cp[3] = bold207();
+	cp[4] = bdoc356();
+	cp[5] = bfam338();
+	cp[6] = phil253();
+
+	cp[7] = comp170();
+	cp[8] = comp245();
+	cp[9] = comp250();
+	cp[10] = comp268();
+	cp[11] = comp301();
+	cp[12] = comp310();
+	cp[13] = comp311();
+	cp[14] = comp336();
+	cp[15] = comp345();
+	cp[16] = comp349();
+	cp[17] = comp430();
+	cp[18] = comp431();
+	cp[19] = comp439();
+	cp[20] = comp440();
+	cp[21] = comp475();
+
+	cp[22] = hnrs201();
+	cp[23] = hnrs202();
+	cp[24] = hnrs204();
+	cp[25] = hnrs203();
+	cp[26] = hnrs205();
+	cp[27] = hnrs459();
+
+	cp[28] = math260();
+	cp[29] = math301();
+	cp[30] = math313();
+	cp[31] = math318();
+	cp[32] = math323();
+	cp[33] = math331();
+	cp[34] = math351();
+	cp[35] = math443();
+	cp[36] = math444();
+
+	cp[37] = fr100();
+	cp[38] = hum201();
+	cp[39] = hum273();
+	cp[40] = kins101();
+	cp[41] = kins119();
+}
+
+
 Course comp170() {
 	Course result;
 	result.name = "COMP 170";
@@ -356,7 +410,6 @@ Course hnrs205() {
 	result.semester7 = 1;
 	result.semester8 = 1;
 	result.difficulty = 45;
-	result.prerequisites.insert(comp245());
 	return result;
 }
 

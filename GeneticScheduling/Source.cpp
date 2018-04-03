@@ -3,10 +3,13 @@
 #include<map>
 #include<algorithm>
 #include<time.h>
-const int COURSE_COUNT = Schedule::COURSE_COUNT;
-const int POP_COUNT = 600;
+#include<vector>
+using std::cout; using std::endl; using std::vector;
 
-typedef std::pair<Schedule, int> Organism;
+const int COURSE_COUNT = Schedule::COURSE_COUNT;
+const int POP_COUNT = 1000;
+
+typedef std::pair<Schedule, double> Organism;
 
 Course * courseData;
 
@@ -14,10 +17,34 @@ int myActualSchedule[COURSE_COUNT] = { 2,4,3,6,5,7,7,1,2,3,2,6,7,6,8,3,3,5,6,8,8
 
 bool compareOrganism(Organism o1, Organism o2) { return o1.second > o2.second; }
 
-int evaluate(Organism& o, bool verbose = false) {
-	int result = 0;
+void print(Schedule s)
+{
+	set<Course> semesters[8];
+	set<Course>::iterator its[8];
+	for (int i = 0; i < COURSE_COUNT; i++) semesters[s[i] - 1].insert(courseData[i]);
 
-	int creditCounts[8];
+	size_t count = 0;
+	for (int i = 0; i < 8; i++) {
+		count = std::max(count, semesters[i].size());
+		its[i] = semesters[i].begin();
+	}
+
+	cout << "   1    \t   2    \t   3    \t   4    \t   5    \t   6    \t   7    \t   8    \t" << endl;
+	cout << "--------\t--------\t--------\t--------\t--------\t--------\t--------\t--------\t" << endl;
+	for (int i = 0; i < count; i++) {
+		for (int s = 0; s < 8; s++) {
+			if (semesters[s].size() > i) cout << ((its[s])++)->name;
+			else cout << "        ";
+			cout << "   \t";
+		}
+		cout << endl;
+	}
+}
+
+double evaluate(Organism& o, bool verbose = false) {
+	double result = 0;
+
+	int creditCounts[8] = { 0 };
 	std::map<Course, int> semesterTaken;
 	Schedule string = o.first;
 	//auto string = myActualSchedule;
@@ -41,22 +68,44 @@ int evaluate(Organism& o, bool verbose = false) {
 	}
 
 	//Check the total number of hours per semester
-	for (int i = 0; i < 8; i++)	if (creditCounts[i] > 18) {
-		result += 18 - creditCounts[i];
-		if (verbose) std::cout << "Semester " << i << ": " << creditCounts[i] << " hours" << std::endl;
+	//if (verbose) cout << "Credit Count: ";
+	for (int i = 0; i < 8; i++) {
+		//if (verbose) cout << i << " = " << creditCounts[i];
+		if (creditCounts[i] > 18) {
+			result -= creditCounts[i] - 18;
+			if (verbose) std::cout << "Semester " << i << ": " << creditCounts[i] << " hours" << std::endl;
+		}
 	}
 
 	//Check the prereqs
-	for (int i = 0; i < COURSE_COUNT; i++) 
-		for (Course prereq : courseData[i].prerequisites) 
-			if (semesterTaken[courseData[i]] < semesterTaken[prereq]) {
+	for (int i = 0; i < COURSE_COUNT; i++)
+		for (Course prereq : courseData[i].prerequisites)
+			if (semesterTaken[courseData[i]] <= semesterTaken[prereq]) {
 				result -= 5;
 				if (verbose) std::cout << courseData[i].name << " (" << semesterTaken[courseData[i]] << ") but prereq: " << prereq.name << " (" << semesterTaken[prereq] << ")" << std::endl;
 			}
-		
-	
 
-	if(verbose) std::cout << std::endl;
+	//Assuming valid schedule, go ahead and calculate variance
+	if (!result) {
+		//Count total weight per semester
+		int weightCounts[8] = { 0 };
+		for (int i = 0; i < COURSE_COUNT; i++)weightCounts[o.first[i] - 1] += courseData[i].difficulty;
+
+		//Adjust for the differences in semesters
+		for (int i = 0; i < 8; i++)weightCounts[i] *= 1 + i*.1;
+
+		//Take the mean
+		double mean = 0; for (int i = 0; i < 8; i++)mean += weightCounts[i]; mean /= 8.0;
+
+		//Take the variance
+		double variance = 0; for (int i = 0; i < 8; i++)variance += (weightCounts[i] - mean) * (weightCounts[i] - mean); variance /= 7.0;
+
+		//Set the result
+		result = 1.0 / variance;
+	}
+
+
+	if (verbose) std::cout << std::endl;
 
 	o.second = result;
 	return result;
@@ -66,7 +115,7 @@ int main() {
 	srand(time(NULL));
 	double avgFitness;
 	//Load course info for evaluation
-	Schedule::getCourseData(courseData);
+	getCourseData(courseData);
 
 	//Create initial population
 	Organism parents[POP_COUNT];
@@ -108,9 +157,10 @@ int main() {
 
 		evaluate(parents[0], true);
 		genCount++;
-	} while (parents[0].second < 0);
+	} while (parents[0].second < 5 || genCount > 100);
 
-	std::cout << "Valid Schedule in only " << genCount << " generations!" << std::endl;
+	std::cout << "Valid Schedule in only " << genCount << " generations!" << std::endl << endl;
+	print(parents[0].first);
 
 	return 0;
 }
