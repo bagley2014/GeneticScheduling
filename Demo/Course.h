@@ -28,6 +28,7 @@ struct Course
 };
 
 void getCourseData(Course*&);
+void getCourseDataX(Course*&);
 
 Course bnew113();
 Course bnew313();

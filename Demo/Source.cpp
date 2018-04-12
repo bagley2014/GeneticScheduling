@@ -4,17 +4,15 @@
 #include<algorithm>
 #include<time.h>
 #include<vector>
+#include <thread>
 using std::cout; using std::endl; using std::vector;
 
 const int COURSE_COUNT = Schedule::COURSE_COUNT;
 const int POP_COUNT = 3000;
-const int TRIALS = 100;
 
 typedef std::pair<Schedule, double> Organism;
 
 Course * courseData;
-
-int myActualSchedule[COURSE_COUNT] = { 2,4,3,6,5,7,7,1,2,3,2,6,7,6,8,3,3,5,6,8,8,6,1,1,2,7,5,8,6,5,1,2,3,8,8,7,8,4,4,4,7,4 };
 
 bool compareOrganism(Organism o1, Organism o2) { return o1.second > o2.second; }
 
@@ -57,8 +55,8 @@ double evaluate(Organism& o, bool verbose = false) {
 	int creditCounts[8] = { 0 };
 	std::map<Course, int> semesterTaken;
 	Schedule string = o.first;
-	//auto string = myActualSchedule;
 
+	if (verbose) cout << endl;
 	for (int i = 0; i < COURSE_COUNT; i++) {
 		//Check each course to see if it's in a valid semester 
 		if (!(string[i] == 1 ? courseData[i].semester1 :
@@ -76,6 +74,7 @@ double evaluate(Organism& o, bool verbose = false) {
 		creditCounts[o.first[i] - 1] += courseData[i].hours;
 		semesterTaken[courseData[i]] = string[i];
 	}
+	if (verbose && result < 0) cout << endl;
 
 	//Check the total number of hours per semester
 	for (int i = 0; i < 8; i++) {
@@ -114,25 +113,51 @@ double evaluate(Organism& o, bool verbose = false) {
 
 		//Set the result
 		result = 1.0 / variance;
+
+		if (verbose) std::cout << std::endl << "Variance: " << variance << " | Fitness: " << result << endl;
 	}
-
-	if (verbose) std::cout << std::endl;
-
+	else if (verbose) std::cout << std::endl << "Fitness: " << result << endl;
+	
 	o.second = result;
 	return result;
 }
 
 int main() {
+	bool delay = false;
 	srand(time(NULL));
 	double avgFitness;
 	//Load course info for evaluation
 	getCourseData(courseData);
-	Organism top20[TRIALS];
 
-#pragma omp parallel for num_threads(3)
-	for (int t20 = 0; t20 < TRIALS; t20++) {
-		//Create initial population
-		Organism parents[POP_COUNT];
+	//Create initial population
+	Organism parents[POP_COUNT];
+
+	//Evaluate the population
+	avgFitness = 0;
+	for (int i = 0; i < POP_COUNT; i++) {
+		if (!parents[i].second) evaluate(parents[i]);
+		avgFitness += parents[i].second;
+	}
+	avgFitness /= POP_COUNT;
+
+	//Sort by fitness
+	std::sort(parents, parents + POP_COUNT, compareOrganism);
+	std::cout << "Initial Average Fitness: " << avgFitness << std::endl;
+
+	for (int genCount = 0; genCount < 150; genCount++)
+	{
+		Organism children[POP_COUNT];
+
+		//set<Schedule> top15percent;
+		for (int i = 0; i < POP_COUNT; i++) {
+			//if (i < POP_COUNT * .35) top15percent.insert(parents[i].first);
+			if (i < POP_COUNT * .15) children[i] = parents[i];
+			else Schedule::crossover(parents[rand() % (int)(POP_COUNT *.35)].first, parents[rand() % (int)(POP_COUNT *.35)].first, children[i].first, children[(i == POP_COUNT - 1) ? i : ++i].first);
+		}
+
+		//if (top15percent.size() == 1) { cout << "So we converged after " << genCount << " generations..." << endl; break; }
+
+		std::copy(children, children + POP_COUNT, parents);
 
 		//Evaluate the population
 		avgFitness = 0;
@@ -141,60 +166,21 @@ int main() {
 			avgFitness += parents[i].second;
 		}
 		avgFitness /= POP_COUNT;
+		std::cout << "Generation " << genCount << " Average Fitness: " << avgFitness << std::endl;
 
 		//Sort by fitness
-		std::sort(parents, parents + POP_COUNT, compareOrganism);
-		//std::cout << avgFitness << std::endl;
+		std::sort(parents, parents + POP_COUNT, compareOrganism);		
 
-		int genCount = 0;
-		do {
-			Organism children[POP_COUNT];
+		std::cout << "Generation " << genCount << " Best Solution: ";
+		evaluate(parents[0], true);
+		std::cout << endl;
 
-			set<Schedule> top15percent;
-			for (int i = 0; i < POP_COUNT; i++) {
-				if (i < POP_COUNT * .35) top15percent.insert(parents[i].first);
-				if (i < POP_COUNT * .15) children[i] = parents[i]; 
-				else Schedule::crossover(parents[rand() % (int)(POP_COUNT *.35)].first, parents[rand() % (int)(POP_COUNT *.35)].first, children[i].first, children[(i == POP_COUNT - 1) ? i : ++i].first);
-			}
-
-			if (top15percent.size() == 1) { cout << "So we converged after " << genCount << " generations..." << endl; break; }
-
-			std::copy(children, children + POP_COUNT, parents);
-
-			//Evaluate the population
-			avgFitness = 0;
-			for (int i = 0; i < POP_COUNT; i++) {
-				if (!parents[i].second) evaluate(parents[i]);
-				avgFitness += parents[i].second;
-			}
-			avgFitness /= POP_COUNT;
-
-			//Sort by fitness
-			std::sort(parents, parents + POP_COUNT, compareOrganism);
-
-			//std::cout << avgFitness << " (" << parents[0].second << ")" << std::endl;
-			//evaluate(parents[0], true);
-
-			genCount++;
-		} while (parents[0].second < 5 && genCount < 500);
-
-		//std::cout << "Valid Schedule in only " << genCount << " generations!" << std::endl << endl;
-		//print(parents[0].first);
-		top20[t20] = parents[0];
-		cout << "+";
-		if ((t20 + 1) % 10 == 0) cout << endl;
-	}
-	cout << endl;
-
-	set<Schedule> countSet;
-	std::sort(top20, top20 + TRIALS, compareOrganism);
-	for (int t20 = 0; t20 < TRIALS; t20++) {
-		countSet.insert(top20[t20].first);
-		std::cout << t20 << " - fitness: " << top20[t20].second << std::endl;
-		print(top20[t20].first);
+		if (delay) std::this_thread::sleep_for(std::chrono::milliseconds(3500));
 	}
 
-	cout << "There were " << countSet.size() << " unique schedules." << endl;
+
+
+
 
 	return 0;
 }

@@ -23,26 +23,32 @@ Schedule::Schedule(int i){
 
 void Schedule::crossover(const Schedule& s1, const Schedule& s2, Schedule& child1, Schedule& child2)
 {
+	//Get the number of bits in the strings
 	const int bitCount = s1.data.size();
 
+	//Get two random points. Make sure the lowest is given first.
 	int pts[2] = { distr(eng) % bitCount, distr(eng) % bitCount };
 	std::sort(pts, pts + 2);
 	
 	int rightShift = bitCount - pts[0];
 	int leftShift = bitCount - pts[1];
 
+	//Do some weird bitshifts to get the three sections of bits
 	auto leftPart = (s1.data >> rightShift) << rightShift;
 	auto middlePart = ((s2.data << pts[0]) >> (pts[0] + leftShift)) << leftShift;
 	auto rightPart = (s1.data << pts[1]) >> pts[1];
 
+	//Bitwise OR to put the parts together
 	child1 = Schedule(0);
 	child1.data |= leftPart | middlePart | rightPart;
 	child1.mutate();
 
+	//Do some weird bitshifts to get the opposite three sections for the second child
 	leftPart = (s2.data >> rightShift) << rightShift;
 	middlePart = ((s1.data << pts[0]) >> (pts[0] + leftShift)) << leftShift;
 	rightPart = (s2.data << pts[1]) >> pts[1];
 
+	//Bitwise OR to put the parts together
 	child2 = Schedule(0);
 	child2.data |= leftPart | middlePart | rightPart;	
 	child2.mutate();
@@ -66,14 +72,6 @@ void Schedule::mutate()
 {
 	auto chance = distr(eng) % 1000;
 	if (chance < data.size()) data[chance].flip();
-}
-
-std::string Schedule::test()
-{
-	Course * c170 = NULL;
-	getCourseData(c170);
-	Schedule sch;
-	return c170[COURSE_COUNT-1].name + ": " + std::to_string((int)sch[COURSE_COUNT-1]);
 }
 
 std::string Schedule::dataString(){ return data.to_string(); }
