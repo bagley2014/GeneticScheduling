@@ -7,7 +7,8 @@
 using std::cout; using std::endl; using std::vector;
 
 const int COURSE_COUNT = Schedule::COURSE_COUNT;
-const int POP_COUNT = 1000;
+const int POP_COUNT = 3000;
+const int TRIALS = 100;
 
 typedef std::pair<Schedule, double> Organism;
 
@@ -31,9 +32,10 @@ void print(Schedule s)
 
 	int difficultyTotals[8] = { 0 };
 
-	cout << "    1    \t    2    \t    3    \t    4    \t    5    \t    6    \t    7    \t    8    \t" << endl;
-	cout << "---------\t---------\t---------\t---------\t---------\t---------\t---------\t---------\t" << endl;
+	cout << "\t    1    \t    2    \t    3    \t    4    \t    5    \t    6    \t    7    \t    8    \t" << endl;
+	cout << "\t---------\t---------\t---------\t---------\t---------\t---------\t---------\t---------\t" << endl;
 	for (int i = 0; i < count; i++) {
+		cout << "\t";
 		for (int s = 0; s < 8; s++) {
 			if (semesters[s].size() > i) {
 				difficultyTotals[s] += its[s]->difficulty;
@@ -44,7 +46,8 @@ void print(Schedule s)
 		}
 		cout << endl;
 	}
-	for (int s = 0; s < 8; s++) cout << "Diff: " << difficultyTotals[s] << "   \t";
+	cout << "Diff: \t";
+	for (int s = 0; s < 8; s++) cout << difficultyTotals[s] << " (" << difficultyTotals[s] * (.5 - s * .025) << ")\t";
 	cout << endl;
 }
 
@@ -75,11 +78,13 @@ double evaluate(Organism& o, bool verbose = false) {
 	}
 
 	//Check the total number of hours per semester
-	//if (verbose) cout << "Credit Count: ";
 	for (int i = 0; i < 8; i++) {
-		//if (verbose) cout << i << " = " << creditCounts[i];
 		if (creditCounts[i] > 18) {
 			result -= creditCounts[i] - 18;
+			if (verbose) std::cout << "Semester " << i << ": " << creditCounts[i] << " hours" << std::endl;
+		}
+		else if (creditCounts[i] < 12) {
+			result -= 12 - creditCounts[i];
 			if (verbose) std::cout << "Semester " << i << ": " << creditCounts[i] << " hours" << std::endl;
 		}
 	}
@@ -96,22 +101,20 @@ double evaluate(Organism& o, bool verbose = false) {
 	if (!result) {
 		//Count total weight per semester
 		int weightCounts[8] = { 0 };
-		for (int i = 0; i < COURSE_COUNT; i++)weightCounts[o.first[i] - 1] += courseData[i].difficulty;
+		for (int i = 0; i < COURSE_COUNT; i++) weightCounts[o.first[i] - 1] += courseData[i].difficulty;
 
 		//Adjust for the differences in semesters
-		//for (int i = 0; i < 8; i++)weightCounts[i] *= 1 + i * .1;
-		for (int i = 0; i < 8; i++)weightCounts[i] *= 2 - i*.1;
+		for (int i = 0; i < 8; i++) weightCounts[i] *= .5 - i * .025;
 
 		//Take the mean
 		double mean = 0; for (int i = 0; i < 8; i++)mean += weightCounts[i]; mean /= 8.0;
 
 		//Take the variance
-		double variance = 0; for (int i = 0; i < 8; i++)variance += (weightCounts[i] - mean) * (weightCounts[i] - mean); variance /= 7.0;
+		double variance = 0; for (int i = 0; i < 8; i++)variance += (weightCounts[i] - mean) * (weightCounts[i] - mean); variance /= 8.0;
 
 		//Set the result
 		result = 1.0 / variance;
 	}
-
 
 	if (verbose) std::cout << std::endl;
 
@@ -124,32 +127,12 @@ int main() {
 	double avgFitness;
 	//Load course info for evaluation
 	getCourseData(courseData);
+	Organism top20[TRIALS];
 
-	//Create initial population
-	Organism parents[POP_COUNT];
-
-	//Evaluate the population
-	avgFitness = 0;
-	for (int i = 0; i < POP_COUNT; i++) {
-		if (!parents[i].second) evaluate(parents[i]);
-		avgFitness += parents[i].second;
-	}
-	avgFitness /= POP_COUNT;
-
-	//Sort by fitness
-	std::sort(parents, parents + POP_COUNT, compareOrganism);
-	std::cout << avgFitness << std::endl;
-
-	int genCount = 0;
-	do {
-		Organism children[POP_COUNT];
-
-		for (int i = 0; i < POP_COUNT; i++) {
-			if (i < POP_COUNT * .15) children[i] = parents[i];
-			else Schedule::crossover(parents[rand() % (int)(POP_COUNT *.35)].first, parents[rand() % (int)(POP_COUNT *.35)].first, children[i].first, children[(i == POP_COUNT - 1) ? i : ++i].first);
-		}
-
-		std::copy(children, children + POP_COUNT, parents);
+#pragma omp parallel for num_threads(3)
+	for (int t20 = 0; t20 < TRIALS; t20++) {
+		//Create initial population
+		Organism parents[POP_COUNT];
 
 		//Evaluate the population
 		avgFitness = 0;
@@ -161,14 +144,57 @@ int main() {
 
 		//Sort by fitness
 		std::sort(parents, parents + POP_COUNT, compareOrganism);
-		std::cout << avgFitness << " (" << parents[0].second << ")" << std::endl;
+		//std::cout << avgFitness << std::endl;
 
-		evaluate(parents[0], true);
-		genCount++;
-	} while (parents[0].second < 5 && genCount < 100);
+		int genCount = 0;
+		do {
+			Organism children[POP_COUNT];
 
-	std::cout << "Valid Schedule in only " << genCount << " generations!" << std::endl << endl;
-	print(parents[0].first);
+			set<Schedule> top15percent;
+			for (int i = 0; i < POP_COUNT; i++) {
+				if (i < POP_COUNT * .35) top15percent.insert(parents[i].first);
+				if (i < POP_COUNT * .15) children[i] = parents[i]; 
+				else Schedule::crossover(parents[rand() % (int)(POP_COUNT *.35)].first, parents[rand() % (int)(POP_COUNT *.35)].first, children[i].first, children[(i == POP_COUNT - 1) ? i : ++i].first);
+			}
+
+			if (top15percent.size() == 1) { cout << "So we converged after " << genCount << " generations..." << endl; break; }
+
+			std::copy(children, children + POP_COUNT, parents);
+
+			//Evaluate the population
+			avgFitness = 0;
+			for (int i = 0; i < POP_COUNT; i++) {
+				if (!parents[i].second) evaluate(parents[i]);
+				avgFitness += parents[i].second;
+			}
+			avgFitness /= POP_COUNT;
+
+			//Sort by fitness
+			std::sort(parents, parents + POP_COUNT, compareOrganism);
+
+			//std::cout << avgFitness << " (" << parents[0].second << ")" << std::endl;
+			//evaluate(parents[0], true);
+
+			genCount++;
+		} while (parents[0].second < 5 && genCount < 500);
+
+		//std::cout << "Valid Schedule in only " << genCount << " generations!" << std::endl << endl;
+		//print(parents[0].first);
+		top20[t20] = parents[0];
+		cout << "+";
+		if ((t20 + 1) % 10 == 0) cout << endl;
+	}
+	cout << endl;
+
+	set<Schedule> countSet;
+	std::sort(top20, top20 + TRIALS, compareOrganism);
+	for (int t20 = 0; t20 < TRIALS; t20++) {
+		countSet.insert(top20[t20].first);
+		std::cout << t20 << " - fitness: " << top20[t20].second << std::endl;
+		print(top20[t20].first);
+	}
+
+	cout << "There were " << countSet.size() << " unique schedules." << endl;
 
 	return 0;
 }

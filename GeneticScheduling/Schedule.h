@@ -13,6 +13,7 @@ public:
 	static void crossover(const Schedule&, const Schedule&, Schedule&, Schedule&);
 
 	__int8 operator[](int);
+	bool operator<(const Schedule) const;
 
 	void mutate();
 	std::string test();

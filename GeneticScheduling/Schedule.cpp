@@ -54,6 +54,14 @@ __int8 Schedule::operator[](int i)
 	return data[3 * i] * 4 + data[3 * i + 1] * 2 + data[3 * i + 2] * 1 + 1;
 }
 
+bool Schedule::operator<(const Schedule s) const
+{
+	for (int i = COURSE_COUNT*3 - 1; i >= 0; i--) {
+		if (data[i] ^ s.data[i]) return s.data[i];
+	}
+	return false;
+}
+
 void Schedule::mutate()
 {
 	auto chance = distr(eng) % 1000;
