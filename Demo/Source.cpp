@@ -127,7 +127,7 @@ int main() {
 	srand(time(NULL));
 	double avgFitness;
 	//Load course info for evaluation
-	getCourseData(courseData);
+	getCourseDataX(courseData);
 
 	//Create initial population
 	Organism parents[POP_COUNT];
@@ -148,14 +148,11 @@ int main() {
 	{
 		Organism children[POP_COUNT];
 
-		//set<Schedule> top15percent;
+		//Select and crossover the population
 		for (int i = 0; i < POP_COUNT; i++) {
-			//if (i < POP_COUNT * .35) top15percent.insert(parents[i].first);
 			if (i < POP_COUNT * .15) children[i] = parents[i];
 			else Schedule::crossover(parents[rand() % (int)(POP_COUNT *.35)].first, parents[rand() % (int)(POP_COUNT *.35)].first, children[i].first, children[(i == POP_COUNT - 1) ? i : ++i].first);
 		}
-
-		//if (top15percent.size() == 1) { cout << "So we converged after " << genCount << " generations..." << endl; break; }
 
 		std::copy(children, children + POP_COUNT, parents);
 
@@ -178,9 +175,8 @@ int main() {
 		if (delay) std::this_thread::sleep_for(std::chrono::milliseconds(3500));
 	}
 
-
-
-
+	cout << "Final Schedule: " << endl;
+	print(parents[0].first);
 
 	return 0;
 }

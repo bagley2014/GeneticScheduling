@@ -16,8 +16,6 @@ public:
 	bool operator<(const Schedule) const;
 
 	void mutate();
-	std::string test();
-	std::string dataString();
 private:
 	std::bitset<COURSE_COUNT * 3> data; 
 };

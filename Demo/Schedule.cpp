@@ -56,7 +56,7 @@ void Schedule::crossover(const Schedule& s1, const Schedule& s2, Schedule& child
 
 __int8 Schedule::operator[](int i)
 {
-	if (i > 44) throw std::invalid_argument("Index out of range");
+	if (i >= COURSE_COUNT) throw std::invalid_argument("Index out of range");
 	return data[3 * i] * 4 + data[3 * i + 1] * 2 + data[3 * i + 2] * 1 + 1;
 }
 
@@ -73,7 +73,3 @@ void Schedule::mutate()
 	auto chance = distr(eng) % 1000;
 	if (chance < data.size()) data[chance].flip();
 }
-
-std::string Schedule::dataString(){ return data.to_string(); }
-
-
